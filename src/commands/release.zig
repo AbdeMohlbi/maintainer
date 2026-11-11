@@ -6,7 +6,7 @@ const pendingChangelogDir = @import("new.zig").pendingChangelogDir;
 
 pub const release = .{
     "release",
-    Command{ .version = "0.0.1", .help = "release a new version", .run = releaseCommand },
+    Command{ .version = "0.0.2", .help = "release a new version", .run = releaseCommand },
 };
 
 pub fn releaseCommand(init: std.process.Init, args: []const [:0]const u8) !void {
