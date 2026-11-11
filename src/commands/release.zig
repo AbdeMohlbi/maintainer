@@ -76,32 +76,37 @@ fn getContent(
 
     var files: std.ArrayList([]const u8) = .empty;
 
-    var dir = try std.Io.Dir.cwd().openDir(init.io, pendingChangelogDir, .{ .iterate = true });
-    defer dir.close(init.io);
+    const changelogDir: ?std.Io.Dir = std.Io.Dir.cwd().openDir(init.io, pendingChangelogDir, .{ .iterate = true }) catch null;
 
-    var walker = try dir.walk(allocator);
-    defer walker.deinit();
+    if (changelogDir) |dir| {
+        defer dir.close(init.io);
 
-    while (try walker.next(init.io)) |entry| {
-        if (entry.kind != .file) continue;
+        var walker = try dir.walk(allocator);
+        defer walker.deinit();
 
-        const content = try dir.readFileAlloc(
-            init.io,
-            entry.path,
-            allocator,
-            .limited(1024 * 1024),
-        );
+        while (try walker.next(init.io)) |entry| {
+            if (entry.kind != .file) continue;
 
-        var lines = std.mem.splitScalar(u8, content, '\n');
+            const content = try dir.readFileAlloc(
+                init.io,
+                entry.path,
+                allocator,
+                .unlimited,
+            );
 
-        const line1 = lines.next() orelse continue;
-        const line2 = lines.next() orelse continue;
+            var lines = std.mem.splitScalar(u8, content, '\n');
 
-        const combined = try std.mem.concat(allocator, u8, &.{ std.mem.trimEnd(u8, line1, "\r"), " ", std.mem.trimEnd(u8, line2, "\r"), "\n" });
+            const line1 = lines.next() orelse continue;
+            const line2 = lines.next() orelse continue;
 
-        try files.append(allocator, combined);
-        // delete old files
-        try dir.deleteFile(init.io, entry.path);
+            const combined = try std.mem.concat(allocator, u8, &.{ std.mem.trimEnd(u8, line1, "\r"), " ", std.mem.trimEnd(u8, line2, "\r"), "\n" });
+
+            try files.append(allocator, combined);
+            // delete old files
+            try dir.deleteFile(init.io, entry.path);
+        }
+    } else {
+        std.log.warn(pendingChangelogDir ++ "does not exist\n", .{});
     }
 
     return try files.toOwnedSlice(allocator);
@@ -132,7 +137,8 @@ fn writeToChangelogFile(init: std.process.Init, new_content: [][]const u8) !void
     try combined.appendSlice(allocator, "\n");
 
     for (new_content) |line| {
-        try combined.appendSlice(allocator, line);
+        const foramttedLine = try std.mem.concat(allocator, u8, &.{ "- ", line });
+        try combined.appendSlice(allocator, foramttedLine);
     }
 
     try combined.appendSlice(allocator, "\n");
