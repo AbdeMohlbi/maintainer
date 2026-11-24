@@ -25,15 +25,19 @@ comptime {
 }
 
 test "commands" {
-    try expectEqual(2, commands.values().len);
+    try expectEqual(3, commands.values().len);
 }
 
 test "newCommand" {
     const command = commands.get("new") orelse return error.CommandNotFound;
-    try expectEqual(Command{ .version = "0.0.1", .help = "create a new random .yml file inside " ++ newCommand.pendingChangelogDir ++ " dir, this dir will be created if it does not exist.", .run = newCommand.newCommand }, command);
+    try expectEqual(Command{ .version = "0.0.1", .help = "create a new random .yml file inside " ++ newCommand.pendingChangelogDir ++ " dir, which will be created if it does not exist.\n" ++ "-r option can be used as follows" ++ "new -r \"changelog entry\" \"PR link\"\n", .run = newCommand.newCommand }, command);
 }
 
 test "listCommand" {
     const command = commands.get("list") orelse return error.CommandNotFound;
     try expectEqual(Command{ .version = "0.0.1", .help = "list all the avilable commands", .run = listCommand.listCommand }, command);
+}
+
+test {
+    _ = newCommand;
 }

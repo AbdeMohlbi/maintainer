@@ -1,8 +1,7 @@
 const std = @import("std");
 const Io = std.Io;
 
-const maintainer = @import("maintainer");
-const command = @import("command.zig");
+const commands = @import("command.zig").commands;
 
 pub fn main(init: std.process.Init) !void {
     std.log.info("Welcome to Maintainer\n", .{});
@@ -16,7 +15,7 @@ pub fn main(init: std.process.Init) !void {
         1 => std.log.warn("You have not choosen any command", .{}),
         // support at most 7 arguments (with the first being the exceutable name)
         2...8 => blk: {
-            const validComment = command.commands.get(args[1]);
+            const validComment = commands.get(args[1]);
             if (validComment) |rawCommand| {
                 try rawCommand.run(init, args);
                 break :blk;
