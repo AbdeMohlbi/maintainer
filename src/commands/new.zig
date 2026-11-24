@@ -17,10 +17,16 @@ pub fn newCommand(init: std.process.Init, args: []const [:0]const u8) !void {
 
     if (mem.eql(u8, args[2], "-r")) {
         if (args.len == 5) {
-            try createRandomFileAndInsertContent(init, args[3], args[4]);
-            //TODO(abdemohlbi): add small checks to check for arguments format
+            if (isEmpty(args[3]) or isEmpty(args[4])) {
+                //TODO(abdemohlbi): add a check for the second argument to be always a link
+                //TODO(abdemohlbi): unify with the same warn under
+                std.log.warn("wrong usage -r option of the new command should be used as follows:\n" ++ "./Maintainer new -r \"changelog entry\" \"PR link\"\n", .{});
+            } else {
+                try createRandomFileAndInsertContent(init, args[3], args[4]);
+            }
             return;
         } else {
+            //TODO(abdemohlbi): unify with the same warn above
             std.log.warn("wrong usage -r option of the new command should be used as follows:\n" ++ "./Maintainer new -r \"changelog entry\" \"PR link\"\n", .{});
             return;
         }
@@ -120,3 +126,32 @@ pub fn createRandomFileAndInsertContent(init: std.process.Init, description: []c
 }
 
 //TODO(abdemohlbi): needs refactor and cleanup before adding more features
+
+pub fn isEmpty(
+    input: []const u8,
+) bool {
+    const trimmed_input = std.mem.trim(u8, input, " ");
+    const trimmed_input_without_lines = std.mem.trim(u8, trimmed_input, "\n");
+    return trimmed_input_without_lines.len == 0;
+}
+
+test "isEmpty" {
+    const cases = .{
+        .{ "a", false },
+        .{ "a", false },
+        .{ "", true },
+        .{ " ", true },
+        .{ "  ", true },
+        .{ "  q", false },
+        .{ "q ", false },
+        .{ "q  ", false },
+        .{ "\n", true },
+    };
+
+    inline for (cases) |case| {
+        try std.testing.expectEqual(
+            case[1],
+            isEmpty(case[0]),
+        );
+    }
+}
