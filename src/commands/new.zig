@@ -17,8 +17,7 @@ pub fn newCommand(init: std.process.Init, args: []const [:0]const u8) !void {
 
     if (mem.eql(u8, args[2], "-r")) {
         if (args.len == 5) {
-            if (isEmpty(args[3]) or isEmpty(args[4])) {
-                //TODO(abdemohlbi): add a check for the second argument to be always a link
+            if ((isEmpty(args[3]) or isEmpty(args[4]) or (!isValidLink(args[4])))) {
                 //TODO(abdemohlbi): unify with the same warn under
                 std.log.warn("wrong usage -r option of the new command should be used as follows:\n" ++ "./Maintainer new -r \"changelog entry\" \"PR link\"\n", .{});
             } else {
@@ -152,6 +151,41 @@ test "isEmpty" {
         try std.testing.expectEqual(
             case[1],
             isEmpty(case[0]),
+        );
+    }
+}
+
+pub fn isValidLink(
+    input: []const u8,
+) bool {
+    const trimmed_input = std.mem.trim(u8, input, " ");
+    const trimmed_input_without_lines = std.mem.trim(u8, trimmed_input, "\n");
+    const strat_with_https = std.mem.startsWith(u8, trimmed_input_without_lines, "https://");
+    return strat_with_https and trimmed_input_without_lines.len > 8;
+}
+
+test "isValidLink" {
+    const cases = .{
+        .{ "", false },
+        .{ " ", false },
+        .{ "  ", false },
+        .{ "\n", false },
+        .{ "\n ", false },
+        .{ " \n ", false },
+        .{ "\n\n", false },
+        .{ " \n\n", false },
+        .{ "\n\n ", false },
+        .{ "https://", false },
+        .{ "https:// ", false },
+        .{ " https://", false },
+        .{ "https:/", false },
+        .{ "https://github.com/org/repo/pull/number", true },
+    };
+
+    inline for (cases) |case| {
+        try std.testing.expectEqual(
+            case[1],
+            isValidLink(case[0]),
         );
     }
 }
