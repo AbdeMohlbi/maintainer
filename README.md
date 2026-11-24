@@ -7,12 +7,13 @@ inspired by [posix_utilities](https://github.com/AbdeMohlbi/posix_utilities)
 ### Build command
 
 ```zig
-    zig build-exe src/main.zig --name Maintainer
+zig build-exe src/main.zig --name Maintainer
 ```
 
-### To deploy to other machines
+### To build and deploy to other machines
 
 ```sh
+zig build-exe src/main.zig --name Maintainer
 mkdir dist
 cp Maintainer dist/
 chmod +x dist/Maintainer
