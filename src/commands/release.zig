@@ -12,6 +12,7 @@ pub const release = .{
 pub fn releaseCommand(init: std.process.Init, args: []const [:0]const u8) !void {
     // meaning that it was invoked by ./bin list
     if (args.len == 2) {
+        //TODO(abdemohlbi): refactor with #2 later
         if (changelogFileExists(init) and
             !changelogFileIsEmpty(init))
         {
@@ -35,6 +36,24 @@ pub fn releaseCommand(init: std.process.Init, args: []const [:0]const u8) !void 
     // if the first argument is --version
     if (std.mem.eql(u8, args[2], "--version")) {
         std.log.info("release command version {s}\n", .{release.@"1".version});
+        return;
+    }
+
+    //TODO(abdemohlbi): refactor with #1 later
+    if (std.mem.eql(u8, args[2], "-d")) {
+        if (changelogFileExists(init) and
+            !changelogFileIsEmpty(init))
+        {
+            std.log.info("changelog file already exists and not empty\n", .{});
+            const contents = try getContentWithoutPRLink(init);
+            if (contents.len == 0) {
+                std.log.warn(pendingChangelogDir ++ " does not contain any changelogs", .{});
+            } else {
+                try writeToChangelogFile(init, contents);
+            }
+        } else {
+            std.log.info("changelog file does not exist or is empty, cancelling operation\n", .{});
+        }
         return;
     }
 }
@@ -100,6 +119,48 @@ fn getContent(
             const line2 = lines.next() orelse continue;
 
             const combined = try std.mem.concat(allocator, u8, &.{ std.mem.trimEnd(u8, line1, "\r"), " ", std.mem.trimEnd(u8, line2, "\r"), "\n" });
+
+            try files.append(allocator, combined);
+            // delete old files
+            try dir.deleteFile(init.io, entry.path);
+        }
+    } else {
+        std.log.warn(pendingChangelogDir ++ "does not exist\n", .{});
+    }
+
+    return try files.toOwnedSlice(allocator);
+}
+
+fn getContentWithoutPRLink(
+    init: std.process.Init,
+) ![][]const u8 {
+    const allocator = init.arena.allocator();
+
+    var files: std.ArrayList([]const u8) = .empty;
+
+    const changelogDir: ?std.Io.Dir = std.Io.Dir.cwd().openDir(init.io, pendingChangelogDir, .{ .iterate = true }) catch null;
+
+    if (changelogDir) |dir| {
+        defer dir.close(init.io);
+
+        var walker = try dir.walk(allocator);
+        defer walker.deinit();
+
+        while (try walker.next(init.io)) |entry| {
+            if (entry.kind != .file) continue;
+
+            const content = try dir.readFileAlloc(
+                init.io,
+                entry.path,
+                allocator,
+                .unlimited,
+            );
+
+            var lines = std.mem.splitScalar(u8, content, '\n');
+
+            const line1 = lines.next() orelse continue;
+
+            const combined = try std.mem.concat(allocator, u8, &.{ std.mem.trimEnd(u8, line1, "\r"), "\n" });
 
             try files.append(allocator, combined);
             // delete old files
