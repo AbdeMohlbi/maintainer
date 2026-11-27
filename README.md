@@ -19,3 +19,9 @@ cp Maintainer dist/
 chmod +x dist/Maintainer
 ditto -c -k --sequesterRsrc dist Maintainer.zip
 ```
+
+### To run all tests
+
+```sh
+zig build test  --summary all
+```

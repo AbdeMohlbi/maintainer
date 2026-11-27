@@ -56,6 +56,15 @@ pub fn releaseCommand(init: std.process.Init, args: []const [:0]const u8) !void 
         }
         return;
     }
+
+    if (mem.eql(u8, args[2], "-t")) {
+        if (args.len == 4) {
+            try tag(init, args[3]);
+        } else {
+            std.log.warn("wrong usage of the -t (tag) option, it should be -t TAG \n", .{});
+        }
+        return;
+    }
 }
 
 fn changelogFileExists(
@@ -217,4 +226,48 @@ fn writeToChangelogFile(init: std.process.Init, new_content: [][]const u8) !void
     try writer.flush();
 }
 
-//TODO(abdemohlbi): needs refactor and cleanup before adding more features
+//TODO(abdemohlbi): file needs refactor and cleanup before adding more features
+
+fn tag(
+    init: std.process.Init,
+    input: []const u8,
+) !void {
+    const allocator = init.arena.allocator();
+
+    var output_dir = try std.Io.Dir.cwd().openDir(
+        init.io,
+        ".",
+        .{},
+    );
+    defer output_dir.close(init.io);
+
+    const existing_content = output_dir.readFileAlloc(
+        init.io,
+        "CHANGELOG.md",
+        allocator,
+        .unlimited,
+    ) catch |err| switch (err) {
+        error.FileNotFound => "",
+        else => return err,
+    };
+
+    var combined: std.ArrayList(u8) = .empty;
+
+    const foramttedLine = try std.mem.concat(allocator, u8, &.{ "## ", input, "\n" });
+    try combined.appendSlice(allocator, foramttedLine);
+
+    try combined.appendSlice(allocator, "\n");
+    try combined.appendSlice(allocator, existing_content);
+
+    const result = try combined.toOwnedSlice(allocator);
+
+    const file = try output_dir.createFile(init.io, "CHANGELOG.md", .{});
+    defer file.close(init.io);
+
+    var file_writer = file.writer(init.io, &.{});
+    const writer = &file_writer.interface;
+
+    _ = try writer.write(result);
+    try writer.flush();
+    std.log.info("tagged {s} successfully", .{input});
+}
